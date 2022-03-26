@@ -37,10 +37,33 @@ class Img(val width: Int, val height: Int, private val data: Array[RGBA]):
   def update(x: Int, y: Int, c: RGBA): Unit = data(y * width + x) = c
 
 /** Computes the blurred RGBA value of a single pixel of the input image. */
-def boxBlurKernel(src: Img, x: Int, y: Int, radius: Int): RGBA =
+def boxBlurKernel(src: Img, x: Int, y: Int, radius: Int): RGBA = {
+  val xRange = x - radius to x + radius
+  val yRange = y - radius to y + radius
+  val rgbas = for {
+    xValue <- xRange
+    yValue <- yRange
+    if (xValue != x || yValue != y) && xValue < src.width && xValue >= 0 && yValue < src.height && yValue >= 0
+  } yield {
+    val rgba = src(xValue, yValue)
+    val redV = red(rgba)
+    val greenV = green(rgba)
+    val blueV = blue(rgba)
+    val alphaV = alpha(rgba)
+//    println(s"($xValue,$yValue) -> $rgba -> ${(redV, greenV, blueV, alphaV)}")
+    (redV, greenV, blueV, alphaV)
+  }
 
-  // TODO implement using while loops
-  ???
+  val baseRGBAs = {
+    val rgba = src(clamp(x, 0, src.width - 1), clamp(y, 0, src.height - 1))
+    (red(rgba), green(rgba), blue(rgba), alpha(rgba))
+  }
+
+  val pixelCountInRange = rgbas.size + 1
+
+  val (r, g, b, a) = rgbas.foldLeft(baseRGBAs) {case ((accR, accG, accB, accA), (r, g, b, a)) => (accR + r, accG + g, accB + b, accA + a)}
+  rgba(r/pixelCountInRange, g/pixelCountInRange, b/pixelCountInRange, a/pixelCountInRange)
+}
 
 val forkJoinPool = ForkJoinPool()
 
